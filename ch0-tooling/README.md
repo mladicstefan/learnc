@@ -29,7 +29,7 @@ Well, it's written in another language. Okay smart ass, but what if there are no
 
 The first compiler was written in binary. The assembly compiler was written in fucking binary—by hand, with toggle switches and punch cards. While you can't center a div, Grace Hopper and her team were literally flipping bits to create the foundation of everything you use today.
 
-This is called **bootstrapping**—pulling yourself up by your own bootstraps. Once you have an assembler, you can write a simple C compiler in assembly. Once you have that C compiler, you can rewrite it in C itself (which is exactly what happened). It's turtles all the way down, except the bottom turtle is some poor bastard manually entering machine code in 1951.
+This is called **bootstrapping**. Once you have an assembler, you can write a simple C compiler in assembly. Once you have that C compiler, you can rewrite it in C itself (which is exactly what happened).
 
 ## How it works
 
@@ -157,3 +157,51 @@ See that? Your object file **knows** it needs `puts` but has no fucking clue whe
 ---
 
 Great, so that little seemingly harmless `#include <stdio.h>` actually requires the **linker**, which is a delightfully convoluted symbol-resolution nightmare that makes the compiler look like a simple calculator.
+
+# Linker
+
+This is the phase where your "simple" hello world becomes a clusterfuck of symbol resolution, memory layout, and relocations.
+
+The linker has **two primary jobs**:
+
+## 1. Symbol Resolution
+
+Think of this like a massive matching game with millions of pieces.
+
+**The Problem:**
+- Your code says: "Hey, I want to call `printf`"
+- The linker's job: "Find me the ONE CORRECT `printf` function out of thousands of symbols"
+
+**Why it's complex:**
+- Your hello world references 50+ symbols, real apps need 10,000+
+- **Order matters**: `gcc main.o libA.a libB.a` gives different results than `gcc main.o libB.a libA.a`
+- Static libraries only pull in functions you actually need, but figuring out what's "needed" requires scanning everything first
+- Circular dependencies: libA needs libB, libB needs libA
+
+## 2. Relocation
+
+Your code thinks `main` is at address `0x0`, but it might actually load at `0x401000`.
+
+The linker assigns real memory addresses to everything and updates every reference to use the new addresses.
+
+## Static vs Dynamic Linking
+
+### Static Linking
+All library code gets copied into your executable.
+- **Pro**: Self-contained, faster execution
+- **Con**: Huge executables, memory waste
+
+### Dynamic Linking
+Libraries are loaded at runtime when needed.
+- **Pro**: Smaller executables, shared memory
+- **Con**: Runtime overhead, dependency hell
+
+### Lazy Loading
+Dynamic linking doesn't resolve all symbols at startup - symbols are only resolved when first called. Your program might reference 1000+ functions but only call 10% of them, so lazy loading = faster startup.
+
+---
+
+**The brutal truth:** The linker is solving graph traversal problems with circular dependencies just to figure out "when I say `printf`, which actual function am I talking about?"
+###
+
+
