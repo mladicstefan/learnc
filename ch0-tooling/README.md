@@ -1,5 +1,5 @@
 This chapter will be either really boring or really exciting to you, either way it's really important. 
-We're going to be talking about C tooling (Compiler, Linker, Build systems, Debugger)
+We're going to be talking about C tooling (Compiler, Linker,Debugger)
 
 ```c
 #include <stdio.h>
