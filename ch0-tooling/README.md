@@ -201,7 +201,87 @@ Dynamic linking doesn't resolve all symbols at startup - symbols are only resolv
 
 ---
 
-**The brutal truth:** The linker is solving graph traversal problems with circular dependencies just to figure out "when I say `printf`, which actual function am I talking about?"
+The linker is solving graph traversal problems with circular dependencies just to figure out "when I say `printf`, which actual function am I talking about?"
 ###
 
+## Debugger
 
+So, your program is crashing, segfaulting, or just doing weird shit. Life would be much easier if you were a 10x JavaScript developer—you could just slap `console.log()` everywhere and prompt AI to fix it. However, we find ourselves in a world where that doesn't work.
+
+A debugger is essentially a program that monitors and controls the execution of another program.
+But let's say you're a debugger and you want to control another process completely, with that kind of power, it's only time until you do something malevolent. You want to control another program's execution. But operating systems don't let random programs mess with each other -that would be chaos.
+
+That is why the OS exposes this functionality throught the ptrace() syscall. For a deeper explanation on PTRACE and syscalls, check out [this excelent video](https://www.youtube.com/watch?v=engduNoI6DE&t)
+
+## Getting Started with GDB
+
+Let's compile our hello world program with debug information:
+
+```bash
+gcc -o 00 00.c -g
+```
+
+**That `-g` flag is crucial**—it tells the compiler to include debug symbols in the executable.
+### Starting a Debug Session
+
+```bash
+❯ gdb hello
+GNU gdb (GDB) 16.3
+Copyright (C) 2024 Free Software Foundation, Inc.
+...
+Reading symbols from 00...
+(gdb)
+```
+
+**What just happened:**
+- GDB loaded your program (but didn't run it yet)
+- It read the debug symbols from your executable
+- You're now in GDB's command prompt, ready to set up debugging
+
+### Setting Breakpoints and Assembly View
+
+Let's say we're hunting for a bug. We know it's roughly in the `main` function, so we'll set a breakpoint there and examine the assembly:
+
+```bash
+(gdb) break main
+Breakpoint 1 at 0x113d: file hello.c, line 4.
+(gdb) layout next
+```
+
+**What these commands do:**
+- `break main`: Sets a breakpoint at the start of the main function
+- `layout next`: Switches to assembly view so you can see the actual machine instructions
+
+## Understanding the GDB Interface
+
+Looking at the screenshots:
+[dbg1](../assets/dbg1.png)
+**Image 1 (Before execution):**
+- **Top panel**: Shows the assembly instructions of your program
+- **Breakpoint marker**: The `B+>` indicates where execution will pause
+- **Assembly breakdown**: You can see the actual x86-64 instructions your C code became
+- **Key instructions**:
+  - `push %rbp`: Setting up stack frame
+  - `call puts@plt`: The actual call to `puts` (optimized from `printf`)
+  - `mov $0x0,%eax`: Setting return value to 0
+
+[dbg2](../assets/dbg2.png)
+**Image 2 (After stepping):**
+- **Program counter moved**: Notice the highlighting moved to the next instruction
+- **Stack operations**: You can see the function prologue executing step by step
+- **Real-time execution**: Each `next` command advances one C line, which corresponds to multiple lines of assembly 
+
+## Why This Matters
+
+**What you're seeing in these screenshots:**
+1. **Your C code transformed**: The simple `printf` became multiple assembly instructions
+2. **Real memory addresses**: Those `0x555555555xxx` addresses are where your code lives in memory
+3. **CPU state**: You can see exactly what the processor is doing at each step
+
+This level of detail is both overwhelming and essential. When your program mysteriously crashes, this is often the only way to figure out what the hell went wrong.ut it's incredibly powerful. Every C programmer needs to know basic GDB because **printf debugging only gets you so far**.
+
+Modern IDEs like VS Code and CLion provide prettier interfaces, but they're all using the same underlying debugging principles.
+We will learn more about GDB as we go but for now, this is enough.
+# You finished the hardest chapter, congradulations.
+
+Now, we'll write some code, I promise.
