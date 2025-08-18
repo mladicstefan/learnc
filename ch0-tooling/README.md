@@ -116,13 +116,13 @@ Time to get our hands dirty. Let's compile our hello world step by step and exam
 
 ### Step 1: Compile to object file
 ```bash
-gcc -c hello.c -o hello.o
+gcc -c 00.c -o 00.o
 ```
 The `-c` flag tells GCC to compile but **not link** - we want to see the raw object file.
 
 ### Step 2: Examine the object file with objdump
 ```bash
-objdump -d hello.o
+objdump -d 00.o
 ```
 This disassembles the object file and shows you the actual machine instructions your C code became.
 
@@ -141,7 +141,7 @@ You'll see something like:
 
 ### Step 3: Check for undefined symbols
 ```bash
-objdump -t hello.o | grep UND
+objdump -t 00.o | grep UND
 ```
 This will show you all the **undefined symbols** - functions your code calls but aren't defined in this object file:
 ```
@@ -225,7 +225,7 @@ gcc -o 00 00.c -g
 ### Starting a Debug Session
 
 ```bash
-❯ gdb hello
+❯ gdb 00 
 GNU gdb (GDB) 16.3
 Copyright (C) 2024 Free Software Foundation, Inc.
 ...
