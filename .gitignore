@@ -1,6 +1,6 @@
 # Prerequisites
 *.d
-
+ch0-tooling/00
 # Object files
 *.o
 *.ko

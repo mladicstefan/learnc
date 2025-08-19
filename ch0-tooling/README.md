@@ -5,6 +5,8 @@ We're going to be talking about C tooling (Compiler, Linker,Debugger)
 #include <stdio.h>
 int main(){
     printf("Hello world!\n");
+    int x = 0;
+    x = 2;
     return 0;
 }
 ```
@@ -209,23 +211,29 @@ The linker is solving graph traversal problems with circular dependencies just t
 So, your program is crashing, segfaulting, or just doing weird shit. Life would be much easier if you were a 10x JavaScript developer—you could just slap `console.log()` everywhere and prompt AI to fix it. However, we find ourselves in a world where that doesn't work.
 
 A debugger is essentially a program that monitors and controls the execution of another program.
-But let's say you're a debugger and you want to control another process completely, with that kind of power, it's only time until you do something malevolent. You want to control another program's execution. But operating systems don't let random programs mess with each other -that would be chaos.
 
-That is why the OS exposes this functionality throught the ptrace() syscall. For a deeper explanation on PTRACE and syscalls, check out [this excelent video](https://www.youtube.com/watch?v=engduNoI6DE&t)
+But let's say you're a debugger and you want to control another process completely—pause it, inspect its memory, modify variables, even inject code. With that kind of power, it's only a matter of time until you do something malevolent. Imagine if any random program could mess with your browser's memory or read your password manager's data. That would be chaos.
+
+This is where CPU protection rings come into play. Your normal programs run in **Ring 3** (user space) with limited privileges—they can't directly access hardware or mess with other processes. The operating system kernel runs in **Ring 0** (kernel space) with god-like powers over the entire system. This separation is what keeps your computer from being a free-for-all nightmare.
+
+But debuggers need to break these rules. They need Ring 0 privileges to control other processes. Since we can't just hand out kernel access to every program (security disaster), the OS provides a controlled gateway: the **ptrace() syscall**. This syscall lets debuggers do dangerous things, but only under strict supervision and with proper permissions.
+
+When you run `gdb`, you're essentially asking the kernel: "Hey, I need to attach to this process and control it completely." The kernel checks if you have permission (usually you need to own the process or be root), and if so, it grants limited god-mode powers through ptrace(). While you can't center a div, at least you can completely dominate a process's memory space.
+
+For a deeper explanation on PTRACE and syscalls, check out [this excellent video](https://www.youtube.com/watch?v=engduNoI6DE&t)
 
 ## Getting Started with GDB
 
 Let's compile our hello world program with debug information:
-
 ```bash
 gcc -o 00 00.c -g
 ```
-
 **That `-g` flag is crucial**—it tells the compiler to include debug symbols in the executable.
+
 ### Starting a Debug Session
 
 ```bash
-❯ gdb 00 
+gdb 00
 GNU gdb (GDB) 16.3
 Copyright (C) 2024 Free Software Foundation, Inc.
 ...
@@ -238,50 +246,127 @@ Reading symbols from 00...
 - It read the debug symbols from your executable
 - You're now in GDB's command prompt, ready to set up debugging
 
-### Setting Breakpoints and Assembly View
+## Essential GDB Commands and Workflow
 
-Let's say we're hunting for a bug. We know it's roughly in the `main` function, so we'll set a breakpoint there and examine the assembly:
+### 1. Examining Your Code
+```bash
+(gdb) list
+1	#include <stdio.h>
+2	
+3	int main(){
+4	   printf("Hello world!\n");
+5	   int x = 0;
+6	   x = 2;
+7	   return 0;
+8	}
+```
+**`list`** (alias: `l`) - Shows your source code around the current location.
+
+### 2. Setting Breakpoints
+```bash
+(gdb) break 4
+Breakpoint 1 at 0x555555555141: file 00.c, line 4.
+```
+**`break`** (alias: `b`) - Sets a breakpoint at line 4. The program will pause here when you run it.
+
+### 3. Running Your Program
+```bash
+(gdb) run
+Starting program: /home/djamla/Documents/code/git/learnc/ch0-tooling/00
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib/libthread_db.so.1".
+
+Breakpoint 1, main () at 00.c:4
+4	   printf("Hello world!\n");
+```
+**`run`** (alias: `r`) - Starts program execution. It stops at your breakpoint on line 4.
+
+### 4. Stepping Through Code
+
+#### Step Into Functions
+```bash
+(gdb) step
+0x00007ffff7c82c96 in __GI__IO_puts (
+    str=0x555555556004 "Hello world!") at ioputs.c:35
+```
+**`step`** (alias: `s`) - Steps into the `printf` function (which becomes `puts` under the hood). This dives deep into library code.
+
+#### Step Out of Functions  
+```bash
+(gdb) finish
+Run till exit from #0  0x00007ffff7c82c96 in __GI__IO_puts (
+    str=0x555555556004 "Hello world!") at ioputs.c:35
+Hello world!
+main () at 00.c:5
+5	   int x = 0;
+Value returned is $1 = 13
+```
+**`finish`** - Executes until the current function returns, bringing you back to your code. Notice it shows the return value (13 = length of "Hello world!\n").
+
+### 5. Managing Breakpoints
+```bash
+(gdb) info breakpoints
+Num     Type           Disp Enb Address            What
+1       breakpoint     keep y   0x0000555555555141 in main at 00.c:4
+	breakpoint already hit 1 time
+
+(gdb) delete 1
+(gdb) info breakpoints
+No breakpoints, watchpoints, tracepoints, or catchpoints.
+```
+**`info breakpoints`** - Lists all breakpoints with their IDs and status.
+**`delete 1`** - Removes breakpoint #1 using the ID from `info breakpoints`.
+
+### 6. Watchpoints - Monitor Variable Changes
+```bash
+(gdb) watch x
+Hardware watchpoint 2: x
+
+(gdb) continue
+Continuing.
+
+Hardware watchpoint 2: x
+
+Old value = 32767
+New value = 0
+main () at 00.c:6
+6	   x = 2;
+```
+**`watch x`** - Creates a watchpoint that triggers whenever variable `x` changes value. Notice it caught the change from garbage value (32767) to 0.
+
+### 7. Examining the Call Stack
+```bash
+(gdb) bt
+#0  main () at 00.c:6
+```
+**`bt`** (backtrace) - Shows the call stack, which is the chain of function calls that led you to the current point. Think of it like breadcrumbs showing how you got here. If `main` called function A, which called function B, you'd see all three stacked up. Here we only see `main` because we're at the top level.
+
+### 8. Printing Variables and Expressions
+```bash
+(gdb) p x
+$2 = 0
+```
+**Notice** that x is 0, that is because we didn't actually change X at its original memory address with a pointer, rather we made a copy and assigned it 2 that will only live until this function returns.
 
 ```bash
-(gdb) break main
-Breakpoint 1 at 0x113d: file hello.c, line 4.
-(gdb) layout next
+(gdb) p x + 2
+$4 = 2
 ```
+**`print`** (alias: `p`) - Evaluates and displays variables or C expressions. Just like in a Python REPL, you can calculate expressions on the fly.
 
-**What these commands do:**
-- `break main`: Sets a breakpoint at the start of the main function
-- `layout next`: Switches to assembly view so you can see the actual machine instructions
+## Essential Aliases
 
-## Understanding the GDB Interface
-
-Looking at the screenshots:
-[dbg1](../assets/dbg1.png)
-**Image 1 (Before execution):**
-- **Top panel**: Shows the assembly instructions of your program
-- **Breakpoint marker**: The `B+>` indicates where execution will pause
-- **Assembly breakdown**: You can see the actual x86-64 instructions your C code became
-- **Key instructions**:
-  - `push %rbp`: Setting up stack frame
-  - `call puts@plt`: The actual call to `puts` (optimized from `printf`)
-  - `mov $0x0,%eax`: Setting return value to 0
-
-[dbg2](../assets/dbg2.png)
-**Image 2 (After stepping):**
-- **Program counter moved**: Notice the highlighting moved to the next instruction
-- **Stack operations**: You can see the function prologue executing step by step
-- **Real-time execution**: Each `next` command advances one C line, which corresponds to multiple lines of assembly 
+**`p`** = `print`, **`n`** = `next`, **`s`** = `step`, **`c`** = `continue`, **`r`** = `run`, **`l`** = `list`, **`b`** = `break`
 
 ## Why This Matters
 
-**What you're seeing in these screenshots:**
-1. **Your C code transformed**: The simple `printf` became multiple assembly instructions
-2. **Real memory addresses**: Those `0x555555555xxx` addresses are where your code lives in memory
-3. **CPU state**: You can see exactly what the processor is doing at each step
+When your program mysteriously crashes, printf debugging only gets you so far. GDB lets you pause execution exactly where problems occur, inspect memory and variables in real-time, and see the exact sequence of function calls.
 
-This level of detail is both overwhelming and essential. When your program mysteriously crashes, this is often the only way to figure out what the hell went wrong.ut it's incredibly powerful. Every C programmer needs to know basic GDB because **printf debugging only gets you so far**.
+This level of control is both overwhelming and essential. Every C programmer needs basic GDB skills because it's often the only way to figure out what the hell went wrong.
 
 Modern IDEs like VS Code and CLion provide prettier interfaces, but they're all using the same underlying debugging principles.
-We will learn more about GDB as we go but for now, this is enough.
-# You finished the hardest chapter, congradulations.
 
+We will learn more about GDB as we go but for now, this is enough.
+
+# You finished the hardest chapter, congratulations.
 Now, we'll write some code, I promise.
