@@ -63,6 +63,13 @@ if (sock < 0) {
     throw std::runtime_error("socket() failed: " + std::string(std::strerror(errno)));
 }
 ```
+See those htons() and htonl() calls? That's me having to manually translate between my little endian x86 machine and the big endian network protocol. Because apparently, in 1978, Intel and the networking standards committee couldn't agree on which direction bytes should go. So now, decades later, every network programmer gets to deal with this mess.
+What those functions do:
+
+htons() = "host to network short" - converts 16-bit port numbers
+htonl() = "host to network long" - converts 32-bit addresses
+
+Without them? Your server thinks port 80 is actually port 20480. Good luck debugging that.
 
 The size of the variable depends on the architecture because different CPUs have different **word sizes**—basically, how much data they can chew through in one bite. A 16-bit CPU naturally works with 16-bit integers, a 32-bit CPU prefers 32-bit integers, and a 64-bit CPU can handle larger integers efficiently. It's all about what the CPU can process in one instruction cycle.
 
