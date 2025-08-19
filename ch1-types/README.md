@@ -48,7 +48,7 @@ So you see, every variable has an address in memory: `0x12345678`, which is just
 
 Nope, we use Little Endian. Thank you Intel for releasing the 8086 processor in 1978 and deciding that bytes should be stored backwards. When Intel dominated the PC market, Little Endian became the standard despite being completely counter-intuitive.
 
-If you think this doesn't matter, let me tell you about the time I spent 3 hours debugging a networking issue because of this exact bullshit. Here's the code snippet that finally worked (this is C++, C doesn't have std::runtime_error):
+If you think this doesn't matter, let me tell you about the time I spent 3 hours debugging a networking issue on a personal project, because of this exact bullshit. Here's the code snippet that finally worked (this is C++, C doesn't have std::runtime_error):
 
 ```cpp
 //set socket domain (IPV4, IPV6 ...)
@@ -63,7 +63,7 @@ if (sock < 0) {
     throw std::runtime_error("socket() failed: " + std::string(std::strerror(errno)));
 }
 ```
-See those htons() and htonl() calls? That's me having to manually translate between my little endian x86 machine and the big endian network protocol. Because apparently, in 1978, Intel and the networking standards committee couldn't agree on which direction bytes should go. So now, decades later, every network programmer gets to deal with this mess.
+See those htons() and htonl() calls? That's me having to manually translate between my little endian x86 machine and the big endian network protocol(thanks intel). So now, decades later, every network programmer getsto deal with this mess.
 What those functions do:
 
 htons() = "host to network short" - converts 16-bit port numbers
@@ -71,7 +71,7 @@ htonl() = "host to network long" - converts 32-bit addresses
 
 Without them? Your server thinks port 80 is actually port 20480. Good luck debugging that.
 
-The size of the variable depends on the architecture because different CPUs have different **word sizes**—basically, how much data they can chew through in one bite. A 16-bit CPU naturally works with 16-bit integers, a 32-bit CPU prefers 32-bit integers, and a 64-bit CPU can handle larger integers efficiently. It's all about what the CPU can process in one instruction cycle.
+The size of the variable depends on the architecture because different CPUs have different **word sizes**—basically, how much data they can chew through in one bite. A 16-bit CPU naturally works with 16-bit integers,a 32-bit CPU prefers 32-bit integers, and a 64-bit CPU can handle larger integers efficiently. It's all about what the CPU can process in one instruction cycle.
 
 ## The Solution
 
@@ -107,4 +107,33 @@ Now when you write `uint32_t`, you know for damn sure it's 32 bits whether you'r
 
 ## Chars, Arrays, Strings
 
+## What Are Chars?
+
+**Chars are 8-bit integers pretending to be letters.**
+
+```c
+char letter = 'A';
+printf("%c\n", letter);  // Prints: A
+printf("%d\n", letter);  // Prints: 65
+```
+
+The single quotes `'A'` are just syntax sugar for the number 65. Your CPU stores 65 in 8 bits, and printf decides whether to show it as a letter or number based on `%c` vs `%d`.
+
+**ASCII mapping:** Every character has a number. `'A'` = 65, `'B'` = 66, `'0'` = 48, etc.
+
+**Chars do math:**
+```c
+char a = 'A';
+char b = a + 1;        // b = 66, which displays as 'B'
+char lower = 'A' + 32; // Convert to lowercase 'a'
+``` 
+```c
+//print all ASCII characters
+for (int i = 32; i <= 126; i++) {
+    printf("%c ", i);
+}
+```
+Most programs today use UTF-8 encoding, which can represent any character (like 🍪 or 中文) by using multiple char bytes per character, while ASCII only fits English letters in single bytes.
+
+When K&R says *"character constants participate in numeric operations just as any other integers"*, this is what they mean. To your CPU, there's no difference between `char` and `int8_t` - they're both 8-bit integers. The "character" part only exists when you print them with `%c`.
 to be continued...

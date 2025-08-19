@@ -1,5 +1,6 @@
-#include <stdint.h>
 
+#include <stdint.h>
+#include <stdio.h>
 // INTEGERS - Whole numbers only
 // Unsigned are positive only. Generally use signed to avoid errors, 
 // but for MAC addresses or IP addresses where only positive is possible, 
@@ -24,5 +25,19 @@ double   precise = 3.141592653589793; // 64 bits: ~15 decimal digits precision
 
 int main()
 {
+
+  char letter = 'A';
+  printf("%c\n", letter);  // Prints: A
+  printf("%d\n", letter);  // Prints: 65
+
+  char a = 'A';
+  char b = a + 1;        // b = 66, which displays as 'B'
+  char lower = 'A' + 32; // Convert to lowercase 'a'
+  
+  //print all ASCII characters.
+  for (int i = 32; i <= 126; i++){
+    printf("%c", i);
+  }
+
   return 0;
 }
