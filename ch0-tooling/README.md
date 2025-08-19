@@ -204,11 +204,12 @@ Dynamic linking doesn't resolve all symbols at startup - symbols are only resolv
 ---
 
 The linker is solving graph traversal problems with circular dependencies just to figure out "when I say `printf`, which actual function am I talking about?"
-###
 
-## Debugger
+# Debugger
 
 So, your program is crashing, segfaulting, or just doing weird shit. Life would be much easier if you were a 10x JavaScript developer—you could just slap `console.log()` everywhere and prompt AI to fix it. However, we find ourselves in a world where that doesn't work.
+
+**When do you actually need a debugger?** When printf debugging becomes impossible - race conditions, memory corruption, crashes that happen deep in library code, or when you need to inspect the exact state of 50+ variables simultaneously. Basically, when your program is being a mysterious asshole.
 
 A debugger is essentially a program that monitors and controls the execution of another program.
 
@@ -228,12 +229,19 @@ Let's compile our hello world program with debug information:
 ```bash
 gcc -o 00 00.c -g
 ```
-**That `-g` flag is crucial**—it tells the compiler to include debug symbols in the executable.
+**That `-g` flag is crucial**—it tells the compiler to include debug symbols (variable names, line numbers, function info) in the executable so GDB can map machine code back to your C source.
 
-### Starting a Debug Session
+### Basic Workflow: Compile → Debug → Profit
 
 ```bash
+# 1. Compile with debug info
+gcc -o 00 00.c -g
+
+# 2. Start GDB
 gdb 00
+```
+
+```bash
 GNU gdb (GDB) 16.3
 Copyright (C) 2024 Free Software Foundation, Inc.
 ...
@@ -291,6 +299,13 @@ Breakpoint 1, main () at 00.c:4
 ```
 **`step`** (alias: `s`) - Steps into the `printf` function (which becomes `puts` under the hood). This dives deep into library code.
 
+#### Step Over Functions
+```bash
+(gdb) next
+5	   int x = 0;
+```
+**`next`** (alias: `n`) - Steps over function calls. Unlike `step`, this treats function calls as single operations and doesn't dive into library code.
+
 #### Step Out of Functions  
 ```bash
 (gdb) finish
@@ -332,7 +347,7 @@ New value = 0
 main () at 00.c:6
 6	   x = 2;
 ```
-**`watch x`** - Creates a watchpoint that triggers whenever variable `x` changes value. Notice it caught the change from garbage value (32767) to 0.
+**`watch x`** - Creates a watchpoint that triggers whenever variable `x` changes value. The watchpoint caught the change from garbage value (32767) to 0 when `int x = 0;` executed, and now we're stopped just BEFORE `x = 2;` runs.
 
 ### 7. Examining the Call Stack
 ```bash
@@ -345,14 +360,27 @@ main () at 00.c:6
 ```bash
 (gdb) p x
 $2 = 0
+
+(gdb) continue
+Continuing.
+
+Hardware watchpoint 2: x
+
+Old value = 0
+New value = 2
+main () at 00.c:7
+7	   return 0;
+
+(gdb) p x
+$3 = 2
 ```
-**Notice** that x is 0, that is because we didn't actually change X at its original memory address with a pointer, rather we made a copy and assigned it 2 that will only live until this function returns.
+**`print`** (alias: `p`) - Evaluates and displays variables or C expressions. Notice how `x` was 0 before the assignment and 2 after. The watchpoint caught both changes.
 
 ```bash
-(gdb) p x + 2
-$4 = 2
+(gdb) p x + 10
+$4 = 12
 ```
-**`print`** (alias: `p`) - Evaluates and displays variables or C expressions. Just like in a Python REPL, you can calculate expressions on the fly.
+Just like in a Python REPL, you can calculate expressions on the fly.
 
 ## Essential Aliases
 
