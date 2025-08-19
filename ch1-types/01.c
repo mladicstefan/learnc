@@ -38,6 +38,11 @@ int main()
   for (int i = 32; i <= 126; i++){
     printf("%c", i);
   }
+  printf("\n");
+  int32_t array[4] = {1,2,3,4};
 
+  printf("Memory adress of the array: %p\n", array);
+  printf("Memory adress of the first element: %p\n", &array[0]);
+  printf("Address of non-existent array[5]: %p\n", &array[5]);
   return 0;
 }

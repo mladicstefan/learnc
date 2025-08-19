@@ -137,3 +137,94 @@ Most programs today use UTF-8 encoding, which can represent any character (like 
 
 When K&R says *"character constants participate in numeric operations just as any other integers"*, this is what they mean. To your CPU, there's no difference between `char` and `int8_t` - they're both 8-bit integers. The "character" part only exists when you print them with `%c`.
 to be continued...
+
+## Arrays
+
+Okay, let's start this off with an easy question. I assume you know what arrays are, so what is the type of an array?
+
+You've probably gotten so used to my questions by now that you know the answer isn't simple. If not, I hope you get used to it fast. So, there can be a few guesses made but let's first take a trip into lala land where everything is dandy (Python) and see how arrays are handled there.
+
+If you take a look inside `array.py` you can see we declare an array:
+(you can run the example yourself with `python3 array.py`)
+
+### Let's create a Python list:
+```python
+def main():
+    x: list[int] = [1, 2, 3, 4]
+```
+
+### Let's print the entire array:
+```python
+    print(f"x: {x}")
+```
+```bash
+x: [1, 2, 3, 4]
+```
+
+### Let's print the memory address of the list object:
+```python
+    print(f"id(x): {hex(id(x))}")
+```
+```bash
+id(x): 0x7f547ad01f80
+```
+
+### Let's print the memory address of the first element:
+```python
+    print(f"id(x[0]): {hex(id(x[0]))}")
+```
+```bash
+id(x[0]): 0x7f547baef330
+```
+**Notice: The list object and its first element have completely different memory addresses!**
+
+### Let's check what type this array actually is:
+```python
+    print(f"type(x): {type(x)}")
+```
+```bash
+type(x): <class 'list'>
+```
+
+### Let's try to access an out-of-bounds element:
+```python
+    try:
+        print(f"Trying to access out of bound element: {x[232]}")
+    except Exception as e:
+        raise e
+```
+```bash
+IndexError: list index out of range
+```
+
+In Python, arrays are complex objects with their own memory addresses, built-in methods like `len()`, and safety features. C arrays are just raw memory with no protection whatsoever.
+
+### Let's now do it in C:
+```c 
+int32_t array[4] = {1,2,3,4};
+printf("Memory address of the array: %p\n", (void*)array);
+printf("Memory address of the first element: %p\n", (void*)&array[0]); // %p is pointer printf formatting
+// & is memory address operator, we will talk more about it when we talk about pointers
+```
+```bash 
+Memory address of the array: 0x7ffd83b46430
+Memory address of the first element: 0x7ffd83b46430 
+```
+
+**Aha! They're the same!**
+
+In C, an array name IS just a pointer to the first element. There's no separate "array object" like in Python - `array` and `&array[0]` are literally the same address. C arrays are just contiguous blocks of memory with no metadata, no methods, and no safety features. The "array" is nothing more than the memory location where the first element lives.
+
+### Let's try accessing an element that doesn't exist:
+```c
+printf("Address of non-existent array[5]: %p\n", (void*)&array[5]);
+```
+```bash
+Address of non-existent array[5]: 0x7ffd83b46444                                                                                                   
+```
+
+**C doesn't care that `array[5]` doesn't exist** - it just calculates where it would be (20 bytes past the start) and gives you that address. This points to whatever random memory happens to be there.
+
+This lack of bounds checking is exactly how buffer overflow exploits work - attackers deliberately access memory beyond array boundaries to corrupt other variables or inject malicious code. It's one of the most common sources of security vulnerabilities in C programs.
+
+You'll understand more about arrays when we come to memory management and pointers, but for now this is enough. For arrays like in Python, which grow on demand we will need to implement a vector type (which comes in std C++ and Rust).
