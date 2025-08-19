@@ -48,6 +48,22 @@ So you see, every variable has an address in memory: `0x12345678`, which is just
 
 Nope, we use Little Endian. Thank you Intel for releasing the 8086 processor in 1978 and deciding that bytes should be stored backwards. When Intel dominated the PC market, Little Endian became the standard despite being completely counter-intuitive.
 
+If you think this doesn't matter, let me tell you about the time I spent 3 hours debugging a networking issue because of this exact bullshit. Here's the code snippet that finally worked (this is C++, C doesn't have std::runtime_error):
+
+```cpp
+//set socket domain (IPV4, IPV6 ...)
+address.sin_family = domain;
+//convert port to network byte order (Big Endian VS Small Endian)
+address.sin_port = htons(port);
+// set ip to bind to, convert ip addr to network byte order
+address.sin_addr.s_addr = htonl(interface);
+//set socket fd
+sock = socket(domain,type,protocol);
+if (sock < 0) {
+    throw std::runtime_error("socket() failed: " + std::string(std::strerror(errno)));
+}
+```
+
 The size of the variable depends on the architecture because different CPUs have different **word sizes**—basically, how much data they can chew through in one bite. A 16-bit CPU naturally works with 16-bit integers, a 32-bit CPU prefers 32-bit integers, and a 64-bit CPU can handle larger integers efficiently. It's all about what the CPU can process in one instruction cycle.
 
 ## The Solution
