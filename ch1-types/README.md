@@ -225,6 +225,32 @@ Address of non-existent array[5]: 0x7ffd83b46444
 
 **C doesn't care that `array[5]` doesn't exist** - it just calculates where it would be (20 bytes past the start) and gives you that address. This points to whatever random memory happens to be there.
 
+### Why Array Indexing Starts at 0
+
+Ever wondered why counting in programming starts at 0? The answer lies in how arrays actually work under the hood.
+
+When we access an array element like `array[3]`, we're not doing some magical indexing operation. We're doing **pointer arithmetic**:
+
+```c
+// These are identical:
+array[3]
+*(array + 3)    // Take array pointer, move 3 elements forward, dereference
+```
+
+The `array[i]` syntax is just syntactic sugar for `*(array + i)`. When `i = 0`, you get `*(array + 0)` which simplifies to `*array` - the first element. Zero-based indexing makes the math clean and direct.
+
+The compiler automatically handles element sizing - `array + 3` doesn't mean "add 3 bytes," it means "move 3 elements forward." For an `int32_t` array, that's actually moving 12 bytes (3 × 4 bytes per int).
+
+### The Security Implications
+
 This lack of bounds checking is exactly how buffer overflow exploits work - attackers deliberately access memory beyond array boundaries to corrupt other variables or inject malicious code. It's one of the most common sources of security vulnerabilities in C programs.
 
-You'll understand more about arrays when we come to memory management and pointers, but for now this is enough. For arrays like in Python, which grow on demand we will need to implement a vector type (which comes in std C++ and Rust).
+```c
+int32_t array[4] = {1, 2, 3, 4};
+int32_t secret = 42;
+
+// Whoops, overwrote the secret variable
+array[4] = 999;  // No error, just corrupts whatever comes after
+```
+
+You'll understand more about arrays when we cover memory management and pointers, but for now this is enough. For dynamic arrays like in Python, we'll need to implement a vector type (which comes built-in with C++ and Rust).
