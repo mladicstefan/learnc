@@ -202,8 +202,8 @@ In Python, arrays are complex objects with their own memory addresses, built-in 
 ### Let's now do it in C:
 ```c 
 int32_t array[4] = {1,2,3,4};
-printf("Memory address of the array: %p\n", (void*)array);
-printf("Memory address of the first element: %p\n", (void*)&array[0]); // %p is pointer printf formatting
+printf("Memory address of the array: %p\n", array);
+printf("Memory address of the first element: %p\n", &array[0]); // %p is pointer printf formatting
 // & is memory address operator, we will talk more about it when we talk about pointers
 ```
 ```bash 
@@ -254,3 +254,80 @@ array[4] = 999;  // No error, just corrupts whatever comes after
 ```
 
 You'll understand more about arrays when we cover memory management and pointers, but for now this is enough. For dynamic arrays like in Python, we'll need to implement a vector type (which comes built-in with C++ and Rust).
+
+## Strings
+
+## Prepare yourself, this is going to be a bit complex
+
+Okay, I'm going to lay off the sarcasm a bit now since this is really important.
+
+C strings are the source of countless memory vulnerabilities and security exploits, and we are going to do a deep dive on it.
+
+**A C string is an array of bytes terminated with a null character `\0` which marks the end of the string.**
+
+## Lvalue & Rvalue
+
+**lvalues** are "things you can assign to", **rvalues** are "things you assign".
+
+```c 
+int x = 5;
+//  ^   ^
+//  |   rvalue (temporary value)
+//  lvalue (can be assigned to and you manage its lifetime)
+
+x = 10;     // x is lvalue (can receive assignment)
+5 = x;      // ERROR: 5 is rvalue (can't be assigned to)
+```
+
+So for strings, an rvalue is a string literal like `"Hello World!"`. That is a literal—it is not mutable. 
+
+So if strings are arrays of bytes and arrays decay into pointers, then this code segment is the same, right?
+
+```c 
+char* str1 = "Hello World!";
+char str2[] = "Hello World!";
+```
+
+**Unfortunately not.** Let's take a deep dive through a practical example. You can look at `string.c`:
+
+```c 
+char *ptr1 = "hello";
+char *ptr2 = "hello";        // Same literal!
+char arr1[] = "hello";
+char arr2[] = "hello";
+
+printf("String literal addresses:\n");
+printf("ptr1: %p\n", (void*)ptr1);
+printf("ptr2: %p\n", (void*)ptr2);     // Same address!
+
+printf("\nArray addresses:\n");
+printf("arr1: %p\n", (void*)arr1);
+printf("arr2: %p\n", (void*)arr2);     // Different addresses!
+```
+
+**Output:**
+```bash 
+String literal addresses:
+ptr1: 0x559ea4762004
+ptr2: 0x559ea4762004
+
+Array addresses:
+arr1: 0x7ffd0931b18c
+arr2: 0x7ffd0931b192
+```
+
+## What's Actually Happening
+
+Here's what's happening: `ptr1` and `ptr2` both point to the **same string literal** stored in read-only memory (`.rodata` section). This is like the number `5` in our earlier example—it's an rvalue that can't be modified.
+
+If you try to modify `ptr1` by dereferencing it (`*ptr1 = 'H'`), you'll get a **SIGSEGV** crash because you're trying to write to read-only memory. It's exactly like trying to do `5 = x`—the compiler/OS says "nope, that's read-only."
+
+However, `arr1` and `arr2` are **copies** of the string literal stored in writable memory (stack), so they have different addresses and can be modified safely. They're true lvalues that you own and control.
+
+## C String Security Nightmare
+
+I've included a function `do_unsafe_shit()` in `string.c`. Take a look at the code, and compile it to see what has cost taxpayers millions of dollars.
+
+## Complex Types
+
+Structs (aligment) sum types, Enums (dumb ADT's, State machines etc...), Union Types()
