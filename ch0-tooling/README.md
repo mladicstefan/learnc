@@ -230,6 +230,8 @@ Let's compile our hello world program with debug information:
 gcc -o 00 00.c -g
 ```
 **That `-g` flag is crucial**—it tells the compiler to include debug symbols (variable names, line numbers, function info) in the executable so GDB can map machine code back to your C source.
+We can actually see the exact difference, note the `with debug_info`
+![dbg](../assets/dbg.png)
 
 ### Basic Workflow: Compile → Debug → Profit
 
