@@ -374,3 +374,43 @@ struct de {
 Nice now it is 8, enjoy a cookie :)
 (u can also invert the order of this since char + char + short = 4 offset)
 We will discuss structs, as we will arrays in more detail in the next chapter dedicated to memory management. 
+
+## Enums
+
+Enums aren't sum types like Rust enums—rather, they represent **discrete states** or **named constants**. 
+
+C enums are essentially **named integers** that start from 0 and increment by 1 (unless explicitly assigned). They're typically the size of an `int` (usually 4 bytes), but the compiler chooses the smallest type that can hold all values. They're most commonly used with `switch` statements for state machines, error codes, and configuration options.
+
+**Key characteristics:**
+- **Just integers under the hood** - no type safety
+- **Automatic numbering** from 0, or custom values
+- **Size varies** based on largest value
+- **Perfect for `switch` statements**
+
+```c
+#include <stdio.h>
+
+typedef enum {
+  BIG = 123412341234,  // Forces larger storage
+  BIGGER,              
+  BIGGEST,             
+} BigNumbers;
+
+typedef enum {
+  HTTP_BAD_REQUEST = 400,
+  HTTP_UNAUTHORIZED = 401,
+  HTTP_NOT_FOUND = 404,
+  HTTP_I_AM_A_TEAPOT = 418,
+  HTTP_INTERNAL_SERVER_ERROR = 500
+} HttpErrorCode;
+
+int main() {
+  printf("The size of BigNumbers is %zu bytes\n", sizeof(BigNumbers));     // 8 bytes due to BIG
+  printf("The size of HttpErrorCode is %zu bytes\n", sizeof(HttpErrorCode)); // 4 bytes
+  return 0;
+}
+```
+
+- Use `typedef enum` for cleaner syntax
+- Name constants with ALL_CAPS or PascalCase
+- Perfect for state machines, error handling, and configuration flags
