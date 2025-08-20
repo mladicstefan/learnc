@@ -1,4 +1,4 @@
-
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 // INTEGERS - Whole numbers only
@@ -23,6 +23,33 @@ uint64_t huge_pos = 18000000000ULL;   // 64 bits: stupidly large
 float    decimal = 3.14f;      // 32 bits: ~7 decimal digits precision
 double   precise = 3.141592653589793; // 64 bits: ~15 decimal digits precision
 
+void size_does_matter()
+{
+  struct demo{
+      char a;      // 1 byte
+      int b;       // 4 bytes
+      short c;     // 2 bytes
+      char d;      // 1 byte
+  };
+  printf("%zu\n",sizeof(struct demo));
+
+  struct de {
+      int b;       // 4 bytes
+      short c;     // 2 bytes
+      char a;      // 1 byte
+      char d;      // 1 byte
+  };
+  printf("%zu\n",sizeof(struct de));
+
+  struct diae {
+      char a;      // 1 byte
+      char d;      // 1 byte
+      short c;     // 2 bytes
+      int b;       // 4 bytes
+  };
+  printf("%zu\n",sizeof(struct diae));
+}
+
 int main()
 {
 
@@ -44,5 +71,7 @@ int main()
   printf("Memory adress of the array: %p\n", array);
   printf("Memory adress of the first element: %p\n", &array[0]);
   printf("Address of non-existent array[5]: %p\n", &array[5]);
+  
+  size_does_matter();
   return 0;
 }

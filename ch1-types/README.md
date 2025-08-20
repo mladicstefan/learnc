@@ -331,3 +331,46 @@ I've included a function `do_unsafe_shit()` in `string.c`. Take a look at the co
 ## Complex Types
 
 Structs (aligment) sum types, Enums (dumb ADT's, State machines etc...), Union Types()
+
+### Structs
+Structs in C are pretty simple.
+
+```c 
+struct point {
+    int x;
+    int y;
+}
+
+```
+A point has both an x and y coordinate in order for it to be valid, which makes structs sum types (have multiple members, so tracking multiple states).
+
+C structs have one quirk with them though, you need to be careful of memory aligment. 
+Question: how many bytes does this struct take up?
+
+```c 
+void size_does_matter()
+{
+struct demo {
+    char a;      // 1 byte
+    int b;       // 4 bytes
+    short c;     // 2 bytes
+    char d;      // 1 byte
+};
+...
+```
+8? WRONG. NO COOKIES FOR YOU!
+It's actually 12, let's understand why.
+
+An int is either 4 or 8 bytes (32 or 64 bits, as we described in the first chapter), so an int has a natural algiment of 4 or 8 bytes. Which means it needs to start on a byte offset (how many bytes from the start of the struct) that is divisible by 4.Since char is 1 byte, the compiler adds `padding` to it of 3 bytes to fit the aligment offset. This is done since 64 bit proceessors (claude do your magic here explain short why). So a more efficient way of writing this would be:
+
+```
+struct de {
+  int b;       // 4 bytes
+  short c;     // 2 bytes
+  char a;      // 1 byte
+  char d;      // 1 byte
+};
+```
+Nice now it is 8, enjoy a cookie :)
+(u can also invert the order of this since char + char + short = 4 offset)
+We will discuss structs, as we will arrays in more detail in the next chapter dedicated to memory management. 
