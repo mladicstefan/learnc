@@ -330,8 +330,6 @@ I've included a function `do_unsafe_shit()` in `string.c`. Take a look at the co
 
 ## Complex Types
 
-Structs (aligment) sum types, Enums (dumb ADT's, State machines etc...), Union Types()
-
 ### Structs
 Structs in C are pretty simple.
 
@@ -414,3 +412,5 @@ int main() {
 - Use `typedef enum` for cleaner syntax
 - Name constants with ALL_CAPS or PascalCase
 - Perfect for state machines, error handling, and configuration flags
+
+
