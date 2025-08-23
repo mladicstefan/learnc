@@ -199,4 +199,90 @@ rsp            0x7fffffffdab0      0x7fffffffdab0  # Stack pointer
 > **Important:** Registers aren't always enough! When you have more arguments than available registers, or large local variables, or complex data structures, the CPU has to use the stack (which is in RAM). This is why you see those `mov` instructions putting values on the stack (`-0x4(%rbp)`, `-0x8(%rbp)`) - the compiler is managing limited register space.
 
 ---
+## Memory Management
+
+Okay, so we've established that the control of whether memory lives in registers, CPU cache, or RAM is abstracted away from us and not in our control (thank god). What we **do** have control of in C is how we allocate our program's memory that lives in RAM.
+
+Memory in RAM is stored on the **Stack** (the one we just talked about) or the **Heap** (we'll get into it very soon). But before we dive into Stack vs Heap, we gotta clarify something important.
+
+### Virtual Memory: Your Program's Safety Net
+
+We do **not** store our memory directly on the RAM - that would be unsafe (we could overwrite or peek into another process's memory). This is one of the core functions of the **kernel**. The kernel decides how much memory a program can access by assigning it **virtual memory**. 
+
+Think of it like that friend who is drunk but can still walk - they just need you to hold them upright and guide them so they don't crash into things or wander into someone else's house. The kernel is you, your program is the drunk friend, and virtual memory is the safe path you create to keep them from causing chaos.
+
+**What virtual memory does:**
+- **Isolation** - Your program can't accidentally access another program's memory
+- **Protection** - Other programs can't mess with your memory
+- **Abstraction** - Your program thinks it has access to a huge, continuous block of memory
+- **Safety** - The kernel manages the actual physical memory mapping behind the scenes
+
+Now that we've got that safety net established, let's talk about how your program actually uses this protected memory space...
+
+## Memory Management
+
+Okay, so we've established that the control of whether memory lives in registers, CPU cache, or RAM is abstracted away from us and not in our control (thank god). What we **do** have control of in C is how we allocate our program's memory that lives in RAM.
+
+Memory in RAM is stored on the **Stack** (the one we just talked about) or the **Heap** (we'll get into it very soon). But before we dive into Stack vs Heap, we gotta clarify something important.
+
+### Virtual Memory 
+
+We do **not** store our memory directly on the RAM - that would be unsafe (we could overwrite or peek into another process's memory). This is one of the core functions of the **kernel**. The kernel decides how much memory a program can access by assigning it **virtual memory**. 
+
+Think of it like that friend who is drunk but can still walk - they just need you to hold them upright and guide them so they don't crash into things or wander into someone else's house. The kernel is you, your program is the drunk friend, and virtual memory is the safe path you create to keep them from causing chaos.
+
+**What virtual memory does:**
+- **Isolation** - Your program can't accidentally access another program's memory
+- **Protection** - Other programs can't mess with your memory
+- **Abstraction** - Your program thinks it has access to a huge, continuous block of memory
+- **Safety** - The kernel manages the actual physical memory mapping behind the scenes
+
+## Stack 
+
+We've already established that stack allocation is **faster**, **simpler**, **implicit**, and pretty much **automatic**. Stack Memory Management is directly managed by **scope**. 
+
+### How Stack Allocation Works
+
+Let's look at an example:
+
+```c 
+void some_func() {
+    int x = 2;           // x allocated on stack
+    {                    // New scope begins
+        int y = 10;      // y allocated on stack
+        char buffer[100]; // buffer allocated on stack
+        // Stack grows...
+    }                    // Scope ends - y and buffer AUTOMATICALLY deallocated!
+    
+    printf("%d", x);     // x still exists, y and buffer are GONE
+}                        // x gets deallocated when function scope ends
+``` 
+
+**Scopes can be:**
+- Functions
+- Regular `{ }` blocks
+- Loop bodies
+- If/else statements
+
+> **Remember:** Some parts of the stack might get optimized into registers by the compiler for even faster access. The compiler decides this automatically based on usage patterns and register availability.
+
+### Stack Limitations
+
+**Stack Overflow** - The stack has limited size (usually ~8MB on most systems):
+
+```c
+void dangerous_function() {
+    char huge_array[10000000]; // This will likely cause a stack overflow!
+    // Your program will crash - the stack ran out of space
+}
+```
+
+When you exceed the stack limit, your program crashes with a **stack overflow** error. This is why massive arrays or deeply recursive functions can be dangerous.
+
+> **Fun fact:** NASA's Jet Propulsion Laboratory follows "The Power of 10" coding rules, and Rule #3 explicitly states "Do not use dynamic memory allocation after initialization." This means NASA almost always uses stack allocation in their C code for spacecraft software! They avoid heap allocation because memory allocators like malloc can have unpredictable behavior that can impact performance, and memory errors are unacceptable when you're controlling a $2.5 billion rover on Mars. Read more about [NASA's 10 coding rules here](https://www.perforce.com/blog/kw/NASA-rules-for-developing-safety-critical-code).
+
+---
+
+## Heap
+
 
