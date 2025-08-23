@@ -44,7 +44,7 @@ mov x0, #42             # Move value to register (simpler syntax)
 
 It also has something to do with whether the machine is Little Endian vs Big Endian.
 
-So you see, every variable has an address in memory: `0x12345678`, which is just a hexadecimal number. But you see, the address that I have written is using Big Endian, which means that memory addresses are formatted like we read, from left to right, most significant byte first. So you might think that we actually use Big Endian on most machines? Right? Right...? Oh fu—
+So you see, when we store multi-byte values in memory, endianness determines the byte order. Let's say we want to store the hexadecimal value 0x12345678. Big Endian means that bytes are stored like we read, from left to right, most significant byte first: 12 34 56 78 (in hex). So you might think that we actually use Big Endian on most machines? Right? Right...? Oh fu—
 
 Nope, we use Little Endian. Thank you Intel for releasing the 8086 processor in 1978 and deciding that bytes should be stored backwards. When Intel dominated the PC market, Little Endian became the standard despite being completely counter-intuitive.
 
