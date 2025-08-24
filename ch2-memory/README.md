@@ -268,6 +268,19 @@ void some_func() {
 
 ### Stack Limitations
 
+Among other things, the size of the memory that you allocate on the stack needs to be known at compile time.Therefore it cannot grow and shrink like the heap.
+```c 
+void stack_problems() {
+    int size;
+    printf("How many numbers do you want to store? ");
+    scanf("%d", &size);
+    
+    int array[size];  // ERROR: size isn't a compile-time constant
+}
+```
+
+The compiler looks at this and says "I have no fucking clue how much memory to reserve." Stack allocation happens during compilation - the compiler needs to know exactly how much space each function will need.
+
 **Stack Overflow** - The stack has limited size (usually ~8MB on most systems):
 
 ```c
@@ -279,10 +292,209 @@ void dangerous_function() {
 
 When you exceed the stack limit, your program crashes with a **stack overflow** error. This is why massive arrays or deeply recursive functions can be dangerous.
 
+
 > **Fun fact:** NASA's Jet Propulsion Laboratory follows "The Power of 10" coding rules, and Rule #3 explicitly states "Do not use dynamic memory allocation after initialization." This means NASA almost always uses stack allocation in their C code for spacecraft software! They avoid heap allocation because memory allocators like malloc can have unpredictable behavior that can impact performance, and memory errors are unacceptable when you're controlling a $2.5 billion rover on Mars. Read more about [NASA's 10 coding rules here](https://www.perforce.com/blog/kw/NASA-rules-for-developing-safety-critical-code).
 
 ---
 
 ## Heap
 
+I hate when complex language features get treated like wizardry. Heap allocation is definitely one of them. Why don't people just frame it like this: "Some programmer way back had to solve a specific problem."
+
+**HEAP ALLOCATION IS JUST AN ENGINEERING SOLUTION.** It doesn't mean C's heap allocation is the **BEST** solution (it isn't—*cough* Rust *cough*).
+
+So instead of memorizing "oh I have to use malloc() for this," let's examine the heap problem from first principles.
+
+## The Problem
+
+- **I don't know how much data will be here!** (Size is determined at runtime)
+- **It's too big!** (that's what she said)
+- **I need it to shrink and grow** ( :( )
+
+That's where HEAP allocation comes in. The heap lives entirely in RAM (no automatic caching into CPU like stack) and involves invoking a syscall which means there's overhead(refer to malloc section in this chapter). The big advantage though, is that you solve these three problems.
+
+So how do we allocate stuff on the heap in C? Let's examine `pointers.c`:
+
+## Let's Debug This Step by Step
+
+Running this through GDB shows exactly what's happening with heap allocation and pointer passing:
+
+### Program Output
+```
+Original value: 0
+Pass by value: 0x2a
+After pass_by_value: 0
+Pass by pointer: 0x5555555592a0
+After pass_by_pointer: 42
+```
+
+### GDB Analysis at Breakpoint
+```bash
+(gdb) p typed
+$1 = (int *) 0x5555555592a0
+
+(gdb) p *typed
+$2 = 42
+```
+
+### What Actually Happened
+
+**1. Heap allocation:** `malloc(sizeof(int))` allocated 4 bytes at address `0x5555555592a0`
+
+**2. Pass by value:** Passed the VALUE (0) to the function, created a local copy at stack address `0x2a`. Modifying the copy doesn't affect the original.
+
+**3. Pass by pointer:** Passed the HEAP ADDRESS to the function. `*x = 42` directly modified the heap memory, changing the original value.
+
+Notice the addresses:
+- **Stack address**: `0x2a` (local variable)
+- **Heap address**: `0x5555555592a0` (malloc'd memory)
+
+Pass-by-value creates a stack copy in completely different memory than the heap allocation.
+
+### Understanding Malloc, Calloc, Realloc, Free
+
+> Note: You can type in `man malloc` for the best explanation (if you're used to linux manuals) for this topic
+
+#### Malloc
+```c 
+void *malloc(size_t size);
+```
+
+This is the function signature for malloc. It returns a `void*` which is a generic pointer, since malloc has no fucking clue what you want to use it for. The argument `size` is of type `size_t` which is just a standard unsigned integer type for sizes. It's important to note that malloc doesn't initialize the value in the memory (doesn't assign values) - it just reserves it so that you can write stuff in that virtual memory space via pointer dereferencing.
+
+Underneath the hood, malloc uses `mmap()` (which maps the bytes in virtual memory) and `sbrk()` (requests more RAM from the kernel). This is the overhead we mentioned previously.
+
+Of course, every `malloc()` must have its corresponding `free()`.
+
+#### Unsafe Behaviour
+
+- **Forgot free():** Can cause memory leaks (not heap overflow - that's different)
+- **Use after free:** Undefined behaviour - you're accessing memory that might have been given to someone else
+- **Double malloc:** Overwriting a pointer without freeing the original memory causes memory leaks
+- **Accessing out of bounds:** malloc doesn't give you guard rails - you can write past your allocated space and corrupt other memory
+
+```c
+int *ptr = malloc(sizeof(int));
+*ptr = 42;
+free(ptr);
+*ptr = 99;  // USE AFTER FREE - undefined behaviour!
+
+// Meanwhile, some other part of your program:
+char *str = malloc(10);  // Might get the same memory address!
+// Now your int write might corrupt the string data
+```
+
+> Note: Undefined behaviour doesn't strictly mean security vulnerability. It means that it is literally undefined - a lot of things can happen, including crashes, logic bugs, memory vulnerabilities, etc.
+
+#### Fun Fact: Malloc Can Silently Fail
+
+> By default, Linux follows an optimistic memory allocation strategy. This means that when malloc() returns non-NULL there is no guarantee that the memory really is available. In case it turns out that the system is out of memory, one or more processes will be killed by the OOM killer. For more information, see the description of /proc/sys/vm/overcommit_memory and /proc/sys/vm/oom_adj in proc(5), and the Linux kernel source file Documentation/vm/overcommit-accounting.rst.
+
+Wait... what do you mean there is no guarantee memory is really available??? **ISN'T THAT THE ONLY POINT?!?!??!!**
+
+##### Virtual Memory ≠ Physical Memory
+
+Virtual memory is just address space - it's like handing out apartment numbers before you've actually built the apartments. Physical memory (RAM) is when you actually pour the concrete.
+
+**VIRTUAL ADDRESS SPACES (Each Process Gets Its Own "Map"):**
+
+```
+Process A's View:          Process B's View:
+┌─────────────────┐        ┌─────────────────┐
+│ 0x1000000       │        │ 0x1000000       │
+│ 0x1000004       │        │ 0x1000004       │  
+│ 0x1000008       │        │ 0x1000008       │
+│      ...        │        │      ...        │
+│ 0x40000000      │        │ 0x40000000      │
+└─────────────────┘        └─────────────────┘
+        │                          │
+        │    KERNEL TRANSLATION    │
+        ▼                          ▼
+┌─────────────────────────────────────────┐
+│        ACTUAL PHYSICAL RAM              │
+│  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐   │
+│  │ A's │  │ B's │  │ A's │  │ B's │   │
+│  │Page │  │Page │  │Page │  │Page │   │
+│  └─────┘  └─────┘  └─────┘  └─────┘   │
+└─────────────────────────────────────────┘
+```
+
+Both processes can have the same virtual addresses, but the kernel maps them to completely different physical locations.
+
+##### The Optimistic Lying Problem
+
+Let's check what the malloc man page actually says:
+
+*"By default, Linux follows an optimistic memory allocation strategy. This means that when malloc() returns non-NULL there is no guarantee that the memory really is available. In case it turns out that the system is out of memory, one or more processes will be killed by the OOM killer."*
+
+**OH HELL NO!** This isn't silent failure - this is optimistic lying followed by murder.
+
+Linux practices **memory overcommitment** - it's basically running a Ponzi scheme with memory:
+
+```c
+int *huge = malloc(1000000 * sizeof(int));  // Ask for ~4MB
+                                           // Virtual: "Sure, here's 4MB of address space!"
+                                           // Physical: 0 bytes actually allocated
+
+huge[0] = 42;           // Write to first int
+                       // Physical: Linux allocates 1 page (4KB) of real RAM
+                       // (a page is the smallest chunk of memory a process can have)
+
+huge[250000] = 99;      // Write to middle of array (~1MB in)  
+                       // Physical: Linux allocates another page (4KB)
+                       // Total physical RAM used: 8KB out of 4MB requested
+```
+
+Linux gives you a 4MB address range but only allocates 4KB pages as you actually touch memory. Most of your "allocated" memory exists only as virtual addresses with no physical RAM backing them.
+
+##### When The Ponzi Scheme Collapses
+
+```c
+// Process A suddenly decides to use everything
+memset(ptr_A, 1, 1000000 * sizeof(int));  // Linux: "Fuck, I need 4MB of real RAM"
+
+// Process B also wants everything
+memset(ptr_B, 1, 1000000 * sizeof(int));  // Linux: "I only have 2MB left... TIME TO KILL!"
+```
+
+The OOM killer murders Process B because Linux wrote checks it couldn't cash.
+
+The functions don't fail silently - they lie to your face and then murder your process later. It's like a restaurant taking your order for 50 pizzas, saying "sure, no problem!" then calling the cops when you show up to collect.
+
+Linux gambles that you won't actually touch all the memory you requested. When it loses this bet, your process gets a friendly message:
+
+```bash
+Killed
+```
+
+No error handling. No graceful degradation. Just death.
+
+#### Free
+
+```c 
+void free(void* ptr);
+```
+
+Free is self explanatory (which means I am lazy so I will copy the linux man page explanation):
+
+> The free() function frees the memory space pointed to by ptr, which must have been returned by a previous call to malloc() or related functions. Otherwise, or if ptr has already been freed, undefined behavior occurs. If ptr is NULL, no operation is performed.
+
+#### Unsafe Behaviour
+
+- **Double Free():** Calling `free()` twice on the same pointer causes undefined behaviour - the memory allocator gets confused about what's allocated vs what's free
+- **Freeing stack memory:** Only free memory that was allocated with malloc/calloc/realloc - freeing stack variables will crash your program
+- **Memory leaks:** Forgetting to call `free()` means that memory stays "reserved" even though you're not using it anymore
+
+```c
+int *ptr = malloc(sizeof(int));
+free(ptr);
+free(ptr);  // DOUBLE FREE - undefined behaviour!
+
+// Or the classic leak:
+void leaky_function() {
+    int *data = malloc(1000 * sizeof(int));
+    // Do some work...
+    return;  // OOPS! Forgot to free(data) - memory leak!
+}
+```
 

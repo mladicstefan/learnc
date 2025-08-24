@@ -40,4 +40,11 @@ I don't make money from this; I just wanted to learn C before college and figure
 
 ---
 
+## What You'll Actually Learn
+- **Memory fundamentals**: Stack, heap, virtual memory, and cache locality
+- **Systems thinking**: How C maps to actual hardware (registers, assembly, CPU)
+- **Debugging**: GDB, memory analysis, and systematic problem-solving
+- **Cross-language perspective**: How C's approach compares to C++/Rust solutions
+- **Deep Level Stuff**: Security implications, performance trade-offs 
+
 *"The only way to learn a new programming language is by writing programs in it."* — Dennis Ritchie, **creator of C**
